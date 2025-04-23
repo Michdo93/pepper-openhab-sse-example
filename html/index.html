@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Lichtsteuerung</title>
+  <script src="/libs/qimessaging/2/qimessaging.js"></script>
+</head>
+<body>
+  <h2>Lichtsteuerung</h2>
+  <button id="lightButton">Lade...</button>
+
+  <script>
+    const BASE_URL = "http://192.168.0.5:8080";
+    var session = new QiSession();
+    var currentState = "OFF";
+
+    session.service("ALMemory").then(function (memory) {
+      function updateButtonLabel(state) {
+        currentState = state;
+        document.getElementById("lightButton").textContent =
+          (state === "ON") ? "Switch off the lamps" : "Switch on the lamps";
+      }
+
+      memory.getData("lampStatus").then(updateButtonLabel);
+
+      memory.subscriber("lampStatusChanged").then(function(subscriber) {
+        subscriber.signal.connect(function(newState) {
+          updateButtonLabel(newState);
+        });
+      });
+
+      document.getElementById("lightButton").onclick = function () {
+        var newState = (currentState === "ON") ? "OFF" : "ON";
+        fetch(`${BASE_URL}/rest/items/iSmartHome_Hue_Lampen_Schalter`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain"
+          },
+          body: newState
+        });
+      };
+    });
+  </script>
+</body>
+</html>
