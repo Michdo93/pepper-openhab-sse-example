@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Smart Home Control</title>
+  <script src="/libs/qimessaging/2/qimessaging.js"></script>
+  <style>
+    button {
+      margin: 10px;
+      padding: 15px 30px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Smart Home Control</h2>
+
+  <!-- Hier deine Buttons -->
+  <button id="kuecheButton">Loading...</button>
+  <button id="badButton">Loading...</button>
+  <button id="iotButton">Loading...</button>
+  <button id="multimediaButton">Loading...</button>
+
+  <script>
+    const BASE_URL = "http://192.168.0.5:8080";
+
+    // Mapping von Button-ID zu OpenHAB-Item-Name
+    const items = {
+      kuecheButton: "iKueche_Hue_Lampen_Schalter",
+      badButton: "iBad_Hue_Lampen_Schalter",
+      iotButton: "iIoT_Hue_Lampen_Schalter",
+      multimediaButton: "iMultimedia_Hue_Lampen_Schalter"
+    };
+
+    var session = new QiSession();
+
+    session.service("ALMemory").then(function (memory) {
+      Object.keys(items).forEach(function(buttonId) {
+        const itemName = items[buttonId];
+        const button = document.getElementById(buttonId);
+
+        function updateButtonLabel(state) {
+          button.dataset.currentState = state; // Aktuellen Zustand speichern
+          if (state === "ON") {
+            button.textContent = `Turn OFF ${buttonId.replace("Button", "")}`;
+          } else {
+            button.textContent = `Turn ON ${buttonId.replace("Button", "")}`;
+          }
+        }
+
+        memory.getData(itemName + "_status").then(updateButtonLabel);
+
+        memory.subscriber(itemName + "_statusChanged").then(function(subscriber) {
+          subscriber.signal.connect(function(newState) {
+            updateButtonLabel(newState);
+          });
+        });
+
+        // Klick-Handler
+        button.onclick = function () {
+          const currentState = button.dataset.currentState || "OFF";
+          const newState = (currentState === "ON") ? "OFF" : "ON";
+          fetch(`${BASE_URL}/rest/items/${itemName}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "text/plain"
+            },
+            body: newState
+          });
+        };
+      });
+    });
+  </script>
+</body>
+</html>
